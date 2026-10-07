@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+<style>
+  body { font-family: Inter, Arial, sans-serif; font-size: 14px; margin: 0; padding: 8px; }
+  button { background:#2b3245; color:#fff; border:0; border-radius:4px; padding:8px 14px; cursor:pointer; }
+  table { border-collapse: collapse; margin-top: 10px; width: 100%; }
+  td { padding: 4px 6px; border-bottom: 1px solid #eee; }
+  td.num { text-align: right; }
+  .total { font-weight: 600; margin-top: 8px; }
+</style>
+</head>
+<body>
+<button id="calc" type="button">Calculate Air Sealing Cost</button>
+<div id="out"></div>
+
+<script>
+const LIST_FIELD_ID = "216";
+const PRICES = {
+  "Air Sealing Windows with Caulking": 15,
+  "W.S Door with foam roll": 15,
+  "Basement wall penetrations": 10,
+  "Foam plumbing stack": 10,
+  "Attic hatch (Insulate and add WS)": 50,
+  "Seal sill plates": 1
+};
+let total = 0;
+
+function parseRows(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  try { return JSON.parse(v); } catch (e) { console.log("Unexpected list value:", v); return []; }
+}
+
+function render(rows) {
+  total = 0;
+  let html = "<table>";
+  rows.forEach(r => {
+    const qty = parseFloat(r.Quantity) || 0;
+    const price = PRICES[r.Measure] || 0;
+    const cost = qty * price;
+    total += cost;
+    html += `<tr><td>${r.Measure || "(no measure)"}</td><td class="num">${qty} × $${price}</td><td class="num">$${cost.toFixed(2)}</td></tr>`;
+  });
+  html += `</table><div class="total">Total: $${total.toFixed(2)}</div>`;
+  document.getElementById("out").innerHTML = rows.length ? html : "No rows entered.";
+  JFCustomWidget.sendData({ value: total.toFixed(2) });
+}
+
+JFCustomWidget.subscribe("ready", () => {
+  document.getElementById("calc").onclick = () => {
+    JFCustomWidget.getFieldsValueById([LIST_FIELD_ID], res => {
+      const raw = res && res.data && res.data[0] ? res.data[0].value : "";
+      console.log("Field 216 value:", raw);   // check this the first time
+      render(parseRows(raw));
+    });
+  };
+});
+
+JFCustomWidget.subscribe("submit", () =>
+  JFCustomWidget.sendSubmit({ valid: true, value: total.toFixed(2) })
+);
+</script>
+</body>
+</html>
