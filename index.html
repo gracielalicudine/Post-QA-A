@@ -10,6 +10,7 @@
   td { padding: 4px 6px; border-bottom: 1px solid #eee; }
   td.num { text-align: right; }
   .total { font-weight: 600; margin-top: 8px; }
+  .msg { margin-top: 8px; color: #b45309; }
 </style>
 </head>
 <body>
@@ -27,6 +28,11 @@ const PRICES = {
   "Seal sill plates": 1
 };
 let total = 0;
+let connected = false;
+
+function show(msg) {
+  document.getElementById("out").innerHTML = '<div class="msg">' + msg + '</div>';
+}
 
 function parseRows(v) {
   if (!v) return [];
@@ -49,19 +55,29 @@ function render(rows) {
   JFCustomWidget.sendData({ value: total.toFixed(2) });
 }
 
-JFCustomWidget.subscribe("ready", () => {
-  document.getElementById("calc").onclick = () => {
-    JFCustomWidget.getFieldsValueById([LIST_FIELD_ID], res => {
-      const raw = res && res.data && res.data[0] ? res.data[0].value : "";
-      console.log("Field 216 value:", raw);   // check this the first time
-      render(parseRows(raw));
-    });
-  };
-});
+document.getElementById("calc").onclick = () => {
+  if (typeof JFCustomWidget === "undefined") {
+    show("Error: the Jotform widget script did not load.");
+    return;
+  }
+  if (!connected) {
+    show("Not connected to the form. This page must be added as a registered Jotform custom widget &mdash; the iFrame Embed widget can't read other fields.");
+    return;
+  }
+  show("Calculating...");
+  JFCustomWidget.getFieldsValueById([LIST_FIELD_ID], res => {
+    console.log("getFieldsValueById response:", res);   // check this the first time
+    const raw = res && res.data && res.data[0] ? res.data[0].value : "";
+    render(parseRows(raw));
+  });
+};
 
-JFCustomWidget.subscribe("submit", () =>
-  JFCustomWidget.sendSubmit({ valid: true, value: total.toFixed(2) })
-);
+if (typeof JFCustomWidget !== "undefined") {
+  JFCustomWidget.subscribe("ready", () => { connected = true; });
+  JFCustomWidget.subscribe("submit", () =>
+    JFCustomWidget.sendSubmit({ valid: true, value: total.toFixed(2) })
+  );
+}
 </script>
 </body>
 </html>
